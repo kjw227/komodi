@@ -320,6 +320,18 @@ class KomodiClass {
     runCode() {
         this.runButton.setState("stop");
         let code = this.globalManager.generateCode();
+        
+	let http = new XMLHttpRequest();
+        let url = "http://localhost:12321";
+        let params = "source_content=" + encodeURIComponent(code);
+        console.log(params)
+        http.open("POST", url, false);
+        http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        http.onreadystatechange = function () {
+            console.log("less fuck");
+        }
+        http.send(params);
+
         console.log(code);
         eval(code);
     }
@@ -331,3 +343,4 @@ class KomodiClass {
 }
 
 export const Komodi = new KomodiClass();
+
