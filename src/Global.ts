@@ -333,7 +333,7 @@ class KomodiClass {
         http.send(params);
 
         console.log(code);
-        eval(code);
+        //eval(code);
     }
 
     stopCode() {

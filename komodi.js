@@ -2005,7 +2005,6 @@ class KomodiClass {
         };
         http.send(params);
         console.log(code);
-        eval(code);
     }
     stopCode() {
         this.runButton.setState("run");
@@ -19456,7 +19455,7 @@ class TypeBase {
 class TNumber extends TypeBase {
     constructor() {
         super(...arguments);
-        this.name = "integer";
+        this.name = "float";
         this.primitive = true;
     }
 }
@@ -19485,6 +19484,14 @@ class TVoid extends TypeBase {
     }
 }
 exports.TVoid = TVoid;
+class TDummy extends TypeBase {
+    constructor() {
+        super(...arguments);
+        this.name = "test";
+        this.primitive = true;
+    }
+}
+exports.TDummy = TDummy;
 class TFunction extends TypeBase {
     constructor(args, returns) {
         super();
@@ -19506,7 +19513,7 @@ class TFunction extends TypeBase {
 exports.TFunction = TFunction;
 function typeInfoToColor(typeInfo) {
     switch (typeInfo.name) {
-        case "integer":
+        case "float":
             return 0xC5EFF7;
         case "string":
             return 0xF1A9A0;
@@ -19514,6 +19521,8 @@ function typeInfoToColor(typeInfo) {
             return 0xDCC6E0;
         case "void":
             return 0xFFFFFF;
+        case "test":
+            return 0xFFD700;
         case "Function":
             return 0;
     }
@@ -21439,6 +21448,8 @@ exports.Block = Block_1.Block;
 exports.FlowBlock = Block_1.FlowBlock;
 var Declaration_1 = __webpack_require__(219);
 exports.Declaration = Declaration_1.Declaration;
+var Class_1 = __webpack_require__(234);
+exports.Class = Class_1.Class;
 
 
 /***/ }),
@@ -38070,7 +38081,7 @@ class ParameterScope extends scope_1.Scope {
         this.graphics.drawRect(bounds.x - OUTLINE_PADDING, 0, bounds.width + OUTLINE_PADDING * 2, startY);
         this.graphics.endFill();
         this.graphics.lineStyle(1, 0x9E9E9E);
-        this.graphics.drawRect(bounds.x - OUTLINE_PADDING, 0, bounds.width + OUTLINE_PADDING * 2, bounds.bottom);
+        this.graphics.drawRect(bounds.x - OUTLINE_PADDING, 0, bounds.width + OUTLINE_PADDING * 2, 55);
         return offset;
     }
     destroy() {
@@ -39191,13 +39202,17 @@ exports.NO_STRING_BLOCK_SET = [
     {
         name: "Signals",
         factories: [
-            builtinFactories_1.startSignalFactory,
+            builtinFactories_1.deviceHeadFactory,
+            builtinFactories_1.deviceBlockFactory,
+            builtinFactories_1.deviceMainFactory,
         ]
     },
     {
         name: "Flow",
         factories: [
-            builtinFactories_1.declarationFactory,
+            builtinFactories_1.intDeclarationFactory,
+            builtinFactories_1.stringDeclarationFactory,
+            builtinFactories_1.varDeclarationFactory,
             builtinFactories_1.forBlockFactory,
             builtinFactories_1.repeatBlockFactory,
             builtinFactories_1.ifBlockFactory,
@@ -39234,9 +39249,26 @@ exports.STANDARD_BLOCK_SET = exports.NO_STRING_BLOCK_SET.concat([
             builtinFactories_1.readStringBlockFactory,
             builtinFactories_1.intToStringBlockFactory,
             builtinFactories_1.stringBlockFactory,
-            builtinFactories_1.printStingBlockFactory,
+            builtinFactories_1.printStringBlockFactory,
+            builtinFactories_1.printIntBlockFactory,
         ]
     },
+    {
+        name: "Library",
+        factories: [
+            builtinFactories_1.readTemperatureFactory,
+            builtinFactories_1.readPressureFactory,
+            builtinFactories_1.DeviceClassFactory,
+        ]
+    },
+]);
+exports.LIBRARY_BLOCK_SET = exports.STANDARD_BLOCK_SET.concat([
+    {
+        name: "Library",
+        factories: [
+            builtinFactories_1.readTemperatureFactory,
+        ]
+    }
 ]);
 
 
@@ -60107,32 +60139,58 @@ class LoopBlock extends controls_1.FlowBlock {
         this.setScope(new LoopScope_1.LoopScope(this));
     }
 }
-exports.startSignalFactory = new SimpleFactory_1.SimpleFactory(controls_1.Signal, new parser_1.PatternParser(`(function () {$1})()`), new SignalShape_1.SignalShape('Start'));
-exports.ifBlockFactory = new SimpleFactory_1.SimpleFactory(IfBlock, new parser_1.PatternParser(`if (@1) {$1} else {$2}`), new ConditionBlockShape_1.ConditionBlockShape('if'));
-exports.whileBlockFactory = new SimpleFactory_1.SimpleFactory(LoopBlock, new parser_1.PatternParser(`while (@1) {$1}`), new ConditionBlockShape_1.ConditionBlockShape('while'));
+exports.deviceHeadFactory = new SimpleFactory_1.SimpleFactory(controls_1.Signal, new parser_1.PatternParser(``), new SignalShape_1.SignalShape('Test'));
+exports.deviceBlockFactory = new ParameterFactory_1.ParameterFactory(controls_1.Signal, [{ name: "value", initial: "RBP" }], (data) => {
+    return {
+        parser: new parser_1.PatternParser(`(function () {$1})()`),
+        shape: new SignalShape_1.SignalShape(`${data.value}`)
+    };
+});
+exports.deviceMainFactory = new ParameterFactory_1.ParameterFactory(LoopBlock, [{ name: "value", initial: "main" }], (data) => {
+    return {
+        parser: new parser_1.PatternParser(`${data.value}(){\n$1\n};`),
+        shape: new CurvedFunctionShape_1.CurvedFunctionShape([], `${data.value}`)
+    };
+});
+exports.ifBlockFactory = new SimpleFactory_1.SimpleFactory(IfBlock, new parser_1.PatternParser(`if (@1){\n$1\n}\nelse{\n$2}\n`), new ConditionBlockShape_1.ConditionBlockShape('if'));
+exports.whileBlockFactory = new SimpleFactory_1.SimpleFactory(LoopBlock, new parser_1.PatternParser(`while (@1) {\n$1}\n`), new ConditionBlockShape_1.ConditionBlockShape('while'));
 exports.forBlockFactory = new ParameterFactory_1.ParameterFactory(ForBlock_1.ForBlock, [{ name: "variable", initial: 'i' }], (data) => {
     let token = utils_1.generateToken();
     return {
-        parser: new parser_1.ParameterParser(`for (let ${token} = (@1); ${token} <= (@2); ${token}++) {$1}`, token),
+        parser: new parser_1.ParameterParser(`for (int ${token} = (@1); ${token} < (@2); ${token}++){\n$1\n}`, token),
         shape: new CurvedFunctionShape_1.CurvedDeclarationShape([new type_1.TNumber(), new type_1.TNumber()], `for ${data.variable} in (min)~(max)`, data.variable)
     };
 });
 exports.repeatBlockFactory = (function () {
     let token = utils_1.generateToken();
-    return new SimpleFactory_1.SimpleFactory(LoopBlock, new parser_1.PatternParser(`for (let ${token} = 0; ${token} < (@1); ${token}++) {$1}`), new CurvedFunctionShape_1.CurvedFunctionShape([new type_1.TNumber()], `reapet (N) times`));
+    return new SimpleFactory_1.SimpleFactory(LoopBlock, new parser_1.PatternParser(`for (int ${token} = 0; ${token} < (@1); ${token}++){\n$1\n}`), new CurvedFunctionShape_1.CurvedFunctionShape([new type_1.TNumber()], `repeat (N) times`));
 })();
-exports.trueBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`true`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TBoolean()), "true"));
-exports.falseBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`false`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TBoolean()), "false"));
-exports.declarationFactory = new ParameterFactory_1.ParameterFactory(controls_1.Declaration, [{ name: "variable", initial: 'var' }], (data) => {
+exports.trueBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`1`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TBoolean()), "true"));
+exports.falseBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`0`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TBoolean()), "false"));
+exports.intDeclarationFactory = new ParameterFactory_1.ParameterFactory(controls_1.Declaration, [{ name: "variable", initial: 'int' }], (data) => {
     let token = utils_1.generateToken();
     return {
-        parser: new parser_1.ParameterParser(`{let ${token} = (@1); $1}`, token),
+        parser: new parser_1.ParameterParser(`int ${token} = (@1);\n $1`, token),
         shape: new DefineShape_1.DefineShape(data.variable)
     };
 });
-exports.readIntegerBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`Komodi.io.readInt()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TNumber()), "Read Integer"));
-exports.readStringBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`Komodi.io.readString()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TString()), "Read String"));
-exports.randBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`Math.floor(Math.random()*((@2)-(@1)+1))+(@1)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "random (min)~(max)"));
+exports.stringDeclarationFactory = new ParameterFactory_1.ParameterFactory(controls_1.Declaration, [{ name: "variable", initial: 'string' }], (data) => {
+    let token = utils_1.generateToken();
+    return {
+        parser: new parser_1.ParameterParser(`char ${token}[100] = (@1);\n $1`, token),
+        shape: new DefineShape_1.DefineShape(data.variable)
+    };
+});
+exports.varDeclarationFactory = new ParameterFactory_1.ParameterFactory(controls_1.Declaration, [{ name: "variable", initial: 'variable' }], (data) => {
+    let token = utils_1.generateToken();
+    return {
+        parser: new parser_1.ParameterParser(`auto ${token} = (@1);`, token),
+        shape: new DefineShape_1.DefineShape(data.variable)
+    };
+});
+exports.readIntegerBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`getInt()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TNumber()), "Read Integer"));
+exports.readStringBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`getString()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TString()), "Read String"));
+exports.randBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`UNIMPLEMENTED`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "random (min)~(max)"));
 exports.numberBlockFactory = new ParameterFactory_1.ParameterFactory(controls_1.Block, [{ name: "value", initial: 10 }], (data) => {
     return {
         parser: new parser_1.PatternParser(`${data.value}`),
@@ -60142,7 +60200,7 @@ exports.numberBlockFactory = new ParameterFactory_1.ParameterFactory(controls_1.
 exports.addBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1)+(@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "(num1) + (num2)"));
 exports.subBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1)-(@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "(num1) - (num2)"));
 exports.multBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1)*(@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "(num1) * (num2)"));
-exports.divBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`Math.floor((@1)/(@2))`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "(num1) / (num2)"));
+exports.divBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`((@1)/(@2))`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "(num1) / (num2)"));
 exports.modBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1)%(@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TNumber()), "(num1) mod (num2)"));
 exports.stringBlockFactory = new ParameterFactory_1.ParameterFactory(controls_1.Block, [{ name: "value", initial: "string" }], (data) => {
     return {
@@ -60150,10 +60208,22 @@ exports.stringBlockFactory = new ParameterFactory_1.ParameterFactory(controls_1.
         shape: new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TString()), `"${data.value}"`)
     };
 });
-exports.intToStringBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1).toString()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber()], new type_1.TString()), "toString (num)"));
-exports.printStingBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`alert(@1)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TString()], new type_1.TVoid()), "print(string)"));
-exports.compareBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1) === (@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TBoolean()), "(num1)==(num2)"));
+exports.intToStringBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`UNIMPLEMENTED`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber()], new type_1.TString()), "toString (num)"));
+exports.printStringBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`printf("%s", @1);`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TString()], new type_1.TVoid()), "print(string)"));
+exports.printIntBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`printf("%d", @1);`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber()], new type_1.TVoid()), "print(int)"));
+exports.compareBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1) == (@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TBoolean()), "(num1)==(num2)"));
 exports.lessThanBlockFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`(@1) < (@2)`), new FunctionShape_1.FunctionShape(new type_1.TFunction([new type_1.TNumber(), new type_1.TNumber()], new type_1.TBoolean()), "(num1)<(num2)"));
+exports.readTemperatureFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`Adafruit_BMP280::readTemperature()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TNumber()), "readTemp"));
+exports.readPressureFactory = new SimpleFactory_1.SimpleFactory(controls_1.Block, new parser_1.PatternParser(`Adafruit_BMP280::readPressure()`), new FunctionShape_1.FunctionShape(new type_1.TFunction([], new type_1.TNumber()), "readPress"));
+exports.DeviceClassFactory = new ParameterFactory_1.ParameterFactory(controls_1.Class, [{ name: "value", initial: "RBP" }], (data) => {
+    return {
+        parser: new parser_1.PatternParser(`#pragma esperanto EspDevDecl(${data.value}, ${data.value}_cs, ${data.value}_ds)\n` +
+            `#pragma esperanto EspDevice(${data.value})\n` +
+            `class ${data.value}{\n$1};\n` +
+            `!TEST_${data.value}[$2] ^`),
+        shape: new SignalShape_1.SignalShape(`${data.value}`)
+    };
+});
 
 
 /***/ }),
@@ -60614,11 +60684,11 @@ class GlobalManager {
         this.globals.delete(signal);
     }
     generateCode() {
-        let result = 'Komodi.hook.startHook && Komodi.hook.startHook();';
+        let result = '';
         for (let control of this.globals) {
             result += control.parser.parse(control) + ';';
         }
-        result += "Komodi.hook.initHook && Komodi.hook.initHook();";
+        result += "";
         return result;
     }
 }
@@ -61156,6 +61226,31 @@ Ca=/^(thin|(?:(?:extra|ultra)-?)?light|regular|book|medium|(?:(?:semi|demi|extra
 function Da(a){for(var b=a.f.length,c=0;c<b;c++){var d=a.f[c].split(":"),e=d[0].replace(/\+/g," "),f=["n4"];if(2<=d.length){var g;var m=d[1];g=[];if(m)for(var m=m.split(","),h=m.length,l=0;l<h;l++){var k;k=m[l];if(k.match(/^[\w-]+$/)){var n=Ca.exec(k.toLowerCase());if(null==n)k="";else{k=n[2];k=null==k||""==k?"n":Ba[k];n=n[1];if(null==n||""==n)n="4";else var r=Aa[n],n=r?r:isNaN(n)?"4":n.substr(0,1);k=[k,n].join("")}}else k="";k&&g.push(k)}0<g.length&&(f=g);3==d.length&&(d=d[2],g=[],d=d?d.split(","):
 g,0<d.length&&(d=za[d[0]])&&(a.c[e]=d))}a.c[e]||(d=za[e])&&(a.c[e]=d);for(d=0;d<f.length;d+=1)a.a.push(new G(e,f[d]))}};function Ea(a,b){this.c=a;this.a=b}var Fa={Arimo:!0,Cousine:!0,Tinos:!0};Ea.prototype.load=function(a){var b=new B,c=this.c,d=new ta(this.a.api,this.a.text),e=this.a.families;va(d,e);var f=new ya(e);Da(f);z(c,wa(d),C(b));E(b,function(){a(f.a,f.c,Fa)})};function Ga(a,b){this.c=a;this.a=b}Ga.prototype.load=function(a){var b=this.a.id,c=this.c.o;b?A(this.c,(this.a.api||"https://use.typekit.net")+"/"+b+".js",function(b){if(b)a([]);else if(c.Typekit&&c.Typekit.config&&c.Typekit.config.fn){b=c.Typekit.config.fn;for(var e=[],f=0;f<b.length;f+=2)for(var g=b[f],m=b[f+1],h=0;h<m.length;h++)e.push(new G(g,m[h]));try{c.Typekit.load({events:!1,classes:!1,async:!0})}catch(l){}a(e)}},2E3):a([])};function Ha(a,b){this.c=a;this.f=b;this.a=[]}Ha.prototype.load=function(a){var b=this.f.id,c=this.c.o,d=this;b?(c.__webfontfontdeckmodule__||(c.__webfontfontdeckmodule__={}),c.__webfontfontdeckmodule__[b]=function(b,c){for(var g=0,m=c.fonts.length;g<m;++g){var h=c.fonts[g];d.a.push(new G(h.name,ga("font-weight:"+h.weight+";font-style:"+h.style)))}a(d.a)},A(this.c,(this.f.api||"https://f.fontdeck.com/s/css/js/")+ea(this.c)+"/"+b+".js",function(b){b&&a([])})):a([])};var Y=new oa(window);Y.a.c.custom=function(a,b){return new sa(b,a)};Y.a.c.fontdeck=function(a,b){return new Ha(b,a)};Y.a.c.monotype=function(a,b){return new ra(b,a)};Y.a.c.typekit=function(a,b){return new Ga(b,a)};Y.a.c.google=function(a,b){return new Ea(b,a)};var Z={load:p(Y.load,Y)}; true?!(__WEBPACK_AMD_DEFINE_RESULT__ = function(){return Z}.call(exports, __webpack_require__, exports, module),
 				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)):"undefined"!==typeof module&&module.exports?module.exports=Z:(window.WebFont=Z,window.WebFontConfig&&Y.load(window.WebFontConfig));}());
+
+
+/***/ }),
+/* 234 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const Control_1 = __webpack_require__(49);
+const SplitScope_1 = __webpack_require__(227);
+const Global_1 = __webpack_require__(6);
+class Class extends Control_1.Control {
+    constructor(parser, shape) {
+        super(shape);
+        this.parser = parser;
+        this.setScope(new SplitScope_1.SplitScope(this, 2));
+        Global_1.Komodi.globalManager.registerGlobal(this);
+    }
+    destroy() {
+        Global_1.Komodi.globalManager.deleteGlobal(this);
+        super.destroy();
+    }
+}
+exports.Class = Class;
 
 
 /***/ })

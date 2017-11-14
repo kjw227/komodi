@@ -50,7 +50,7 @@ export class ParameterScope extends Scope {
         this.graphics.lineStyle(1, 0x9E9E9E);
         this.graphics.drawRect(
             bounds.x - OUTLINE_PADDING, 0,
-            bounds.width + OUTLINE_PADDING*2, bounds.bottom
+            bounds.width + OUTLINE_PADDING*2, 55
         );
 
         return offset;

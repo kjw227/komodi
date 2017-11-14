@@ -1,7 +1,10 @@
 import {
     addBlockFactory,
+    deviceBlockFactory,
+    intDeclarationFactory,
+    stringDeclarationFactory,
+    varDeclarationFactory,
     compareBlockFactory,
-    declarationFactory,
     divBlockFactory,
     falseBlockFactory,
     forBlockFactory,
@@ -11,16 +14,21 @@ import {
     modBlockFactory,
     multBlockFactory,
     numberBlockFactory,
-    printStingBlockFactory,
+    printStringBlockFactory,
+    printIntBlockFactory,
     randBlockFactory,
     readIntegerBlockFactory,
     readStringBlockFactory,
     repeatBlockFactory,
-    startSignalFactory,
+    deviceHeadFactory,
     stringBlockFactory,
     subBlockFactory,
     trueBlockFactory,
-    whileBlockFactory
+    whileBlockFactory,
+    deviceMainFactory,
+    readTemperatureFactory,
+    readPressureFactory,
+    DeviceClassFactory,
 } from "./builtinFactories";
 import {SideMenuInfo} from "./ui/sideMenu";
 
@@ -28,13 +36,17 @@ export const NO_STRING_BLOCK_SET: SideMenuInfo[] = [
     {
         name: "Signals",
         factories: [
-            startSignalFactory,
+            deviceHeadFactory,
+            deviceBlockFactory,
+            deviceMainFactory,
         ]
     },
     {
         name: "Flow",
         factories: [
-            declarationFactory,
+            intDeclarationFactory,
+            stringDeclarationFactory,
+            varDeclarationFactory,
             forBlockFactory,
             repeatBlockFactory,
             ifBlockFactory,
@@ -72,7 +84,25 @@ export const STANDARD_BLOCK_SET: SideMenuInfo[] = NO_STRING_BLOCK_SET.concat([
             readStringBlockFactory,
             intToStringBlockFactory,
             stringBlockFactory,
-            printStingBlockFactory,
+            printStringBlockFactory,
+            printIntBlockFactory,
         ]
     },
+    {
+        name: "Library",
+        factories: [
+            readTemperatureFactory,
+            readPressureFactory,
+            DeviceClassFactory,
+        ]
+    },
+]);
+
+export const LIBRARY_BLOCK_SET: SideMenuInfo[] = STANDARD_BLOCK_SET.concat([
+    {
+        name: "Library",
+        factories: [
+            readTemperatureFactory,
+        ]
+    }
 ]);

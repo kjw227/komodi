@@ -12,7 +12,7 @@ abstract class TypeBase {
 }
 
 export class TNumber extends TypeBase {
-    readonly name: "integer" = "integer";
+    readonly name: "float" = "float";
     readonly primitive = true;
 }
 
@@ -28,6 +28,11 @@ export class TBoolean extends TypeBase {
 
 export class TVoid extends TypeBase {
     readonly name: "void" = "void";
+    readonly primitive = true;
+}
+
+export class TDummy extends TypeBase {
+    readonly name: "test" = "test";
     readonly primitive = true;
 }
 
@@ -50,11 +55,11 @@ export class TFunction extends TypeBase {
     }
 }
 
-export type TypeInfo = TNumber | TString | TBoolean | TVoid | TFunction;
+export type TypeInfo = TNumber | TString | TBoolean | TVoid | TFunction | TDummy;
 
 export function typeInfoToColor(typeInfo: TypeInfo): number {
     switch (typeInfo.name) {
-        case "integer":
+        case "float":
             return 0xC5EFF7;
         case "string":
             return 0xF1A9A0;
@@ -62,6 +67,9 @@ export function typeInfoToColor(typeInfo: TypeInfo): number {
             return 0xDCC6E0;
         case "void":
             return 0xFFFFFF;
+        case "test":
+            return 0xFFD700;
+
         case "Function":
             return 0;
     }
